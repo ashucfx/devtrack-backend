@@ -4,26 +4,31 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.constants import ApplicationStage
 from app.core.exceptions import EntityNotFoundException
+from app.core.state_machine import validate_stage_transition
 from app.models.application import Application
 from app.repositories.application_repository import ApplicationRepository
 from app.repositories.company_repository import CompanyRepository
+from app.repositories.stage_history_repository import StageHistoryRepository
 from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.schemas.common import PaginatedResponse
+from app.schemas.stage_history import ApplicationTimelineResponse, StageHistoryRead
 
 
 class ApplicationService:
-    """Service handling job application business logic and ownership validation."""
+    """Service handling job application business logic, state machine, and audit trail."""
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
         self.app_repo = ApplicationRepository(session)
         self.company_repo = CompanyRepository(session)
+        self.history_repo = StageHistoryRepository(session)
 
     async def create_application(
         self, app_in: ApplicationCreate, user_id: uuid.UUID
     ) -> Application:
-        """Create a job application record after verifying company tenant ownership."""
+        """Create a job application and atomically record the initial stage history entry."""
         company = await self.company_repo.get_by_id_and_user(app_in.company_id, user_id)
         if not company:
             raise EntityNotFoundException("Company", app_in.company_id)
@@ -33,23 +38,30 @@ class ApplicationService:
             company_id=app_in.company_id,
             job_title=app_in.job_title.strip(),
             job_url=app_in.job_url.strip() if app_in.job_url else None,
-            employment_type=app_in.employment_type,
+            employment_type=app_in.employment_type.value,
             location=app_in.location.strip() if app_in.location else None,
-            location_type=app_in.location_type,
+            location_type=app_in.location_type.value,
             salary_min=app_in.salary_min,
             salary_max=app_in.salary_max,
             currency=app_in.currency.upper().strip(),
-            source=app_in.source,
+            source=app_in.source.value,
             applied_date=app_in.applied_date,
-            current_stage=app_in.current_stage,
-            status=app_in.status,
-            priority=app_in.priority,
+            current_stage=app_in.current_stage.value,
+            status=app_in.status.value,
+            priority=app_in.priority.value,
             notes=app_in.notes.strip() if app_in.notes else None,
         )
         application = await self.app_repo.create(application)
-        await self.session.commit()
 
-        # Reload with joined company
+        # Atomic initial audit entry
+        await self.history_repo.record_transition(
+            application_id=application.id,
+            from_stage=None,
+            to_stage=application.current_stage,
+            notes="Initial application record created.",
+        )
+
+        await self.session.commit()
         return await self.get_application(application.id, user_id)
 
     async def get_application(self, application_id: uuid.UUID, user_id: uuid.UUID) -> Application:
@@ -122,7 +134,7 @@ class ApplicationService:
         app_update: ApplicationUpdate,
         user_id: uuid.UUID,
     ) -> Application:
-        """Update an application verifying tenant ownership of both application and new company."""
+        """Update application metadata (non-stage fields) verifying tenant ownership."""
         application = await self.get_application(application_id, user_id)
 
         update_dict = app_update.model_dump(exclude_unset=True)
@@ -136,11 +148,62 @@ class ApplicationService:
         if update_dict.get("job_title"):
             update_dict["job_title"] = update_dict["job_title"].strip()
 
+        # If current_stage is passed in standard PATCH, enforce state machine
+        if "current_stage" in update_dict and update_dict["current_stage"] is not None:
+            to_stage_enum = ApplicationStage(update_dict["current_stage"])
+            validate_stage_transition(application.current_stage, to_stage_enum)
+            await self.history_repo.record_transition(
+                application_id=application.id,
+                from_stage=application.current_stage,
+                to_stage=to_stage_enum.value,
+                notes="Stage updated via application patch.",
+            )
+            update_dict["current_stage"] = to_stage_enum.value
+
         if update_dict:
             await self.app_repo.update(application, **update_dict)
             await self.session.commit()
 
         return await self.get_application(application.id, user_id)
+
+    async def transition_stage(
+        self,
+        application_id: uuid.UUID,
+        to_stage: ApplicationStage,
+        notes: str | None,
+        user_id: uuid.UUID,
+    ) -> Application:
+        """Execute a validated stage transition and append to the audit history ledger."""
+        application = await self.get_application(application_id, user_id)
+        from_stage = application.current_stage
+
+        # Enforce Finite State Machine rules
+        validate_stage_transition(from_stage, to_stage)
+
+        # Atomic update and audit trail record
+        application.current_stage = to_stage.value
+        await self.history_repo.record_transition(
+            application_id=application.id,
+            from_stage=from_stage,
+            to_stage=to_stage.value,
+            notes=notes,
+        )
+        await self.session.commit()
+
+        return await self.get_application(application.id, user_id)
+
+    async def get_application_timeline(
+        self, application_id: uuid.UUID, user_id: uuid.UUID
+    ) -> ApplicationTimelineResponse:
+        """Retrieve chronological timeline history of an application verifying ownership."""
+        application = await self.get_application(application_id, user_id)
+        entries = await self.history_repo.get_timeline(application.id)
+
+        return ApplicationTimelineResponse(
+            application_id=application.id,
+            current_stage=application.current_stage,
+            timeline=[StageHistoryRead.model_validate(e) for e in entries],
+        )
 
     async def delete_application(self, application_id: uuid.UUID, user_id: uuid.UUID) -> None:
         """Delete an application record enforcing tenant isolation."""

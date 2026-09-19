@@ -17,6 +17,7 @@ from app.core.constants import (
 from app.models.user import User
 from app.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from app.schemas.common import ErrorResponse, PaginatedResponse
+from app.schemas.stage_history import ApplicationTimelineResponse, StageTransitionRequest
 from app.services.application_service import ApplicationService
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
@@ -134,7 +135,10 @@ async def get_application(
     responses={
         401: {"model": ErrorResponse, "description": "Unauthorized"},
         404: {"model": ErrorResponse, "description": "Application or company not found"},
-        422: {"model": ErrorResponse, "description": "Validation error"},
+        422: {
+            "model": ErrorResponse,
+            "description": "Validation error or invalid state transition",
+        },
     },
 )
 async def update_application(
@@ -147,6 +151,54 @@ async def update_application(
     service = ApplicationService(db)
     application = await service.update_application(application_id, app_update, current_user.id)
     return ApplicationRead.model_validate(application)
+
+
+@router.post(
+    "/{application_id}/stage",
+    response_model=ApplicationRead,
+    status_code=status.HTTP_200_OK,
+    summary="Transition application stage",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Application not found or access denied"},
+        422: {"model": ErrorResponse, "description": "Illegal stage transition"},
+    },
+)
+async def transition_application_stage(
+    application_id: uuid.UUID,
+    transition_in: StageTransitionRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationRead:
+    """Transition an application to a new stage enforcing finite state machine constraints."""
+    service = ApplicationService(db)
+    application = await service.transition_stage(
+        application_id=application_id,
+        to_stage=transition_in.to_stage,
+        notes=transition_in.notes,
+        user_id=current_user.id,
+    )
+    return ApplicationRead.model_validate(application)
+
+
+@router.get(
+    "/{application_id}/timeline",
+    response_model=ApplicationTimelineResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get application stage transition timeline",
+    responses={
+        401: {"model": ErrorResponse, "description": "Unauthorized"},
+        404: {"model": ErrorResponse, "description": "Application not found or access denied"},
+    },
+)
+async def get_application_timeline(
+    application_id: uuid.UUID,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> ApplicationTimelineResponse:
+    """Retrieve the complete chronological stage progression audit trail."""
+    service = ApplicationService(db)
+    return await service.get_application_timeline(application_id, current_user.id)
 
 
 @router.delete(
