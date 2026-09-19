@@ -1,3 +1,4 @@
+import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -30,7 +31,7 @@ def create_access_token(
     expires_delta: timedelta | None = None,
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
-    """Create signed JWT access token."""
+    """Create signed JWT access token with unique JTI."""
     settings = get_settings()
     now = datetime.now(UTC)
     if expires_delta:
@@ -42,6 +43,7 @@ def create_access_token(
         "sub": str(subject),
         "iat": now,
         "exp": expire,
+        "jti": str(uuid.uuid4()),
         "type": "access",
     }
     if extra_claims:
@@ -54,7 +56,7 @@ def create_refresh_token(
     subject: str | UUID,
     expires_delta: timedelta | None = None,
 ) -> str:
-    """Create signed JWT refresh token."""
+    """Create signed JWT refresh token with unique JTI."""
     settings = get_settings()
     now = datetime.now(UTC)
     if expires_delta:
@@ -66,6 +68,7 @@ def create_refresh_token(
         "sub": str(subject),
         "iat": now,
         "exp": expire,
+        "jti": str(uuid.uuid4()),
         "type": "refresh",
     }
     return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
