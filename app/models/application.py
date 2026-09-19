@@ -20,6 +20,8 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.company import Company
+    from app.models.follow_up import FollowUp
+    from app.models.interview import Interview
     from app.models.stage_history import ApplicationStageHistory
     from app.models.user import User
 
@@ -122,6 +124,20 @@ class Application(Base, UUIDMixin, TimestampMixin):
         back_populates="application",
         cascade="all, delete-orphan",
         order_by="ApplicationStageHistory.changed_at.asc()",
+        lazy="selectin",
+    )
+    interviews: Mapped[list["Interview"]] = relationship(
+        "Interview",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="Interview.round_number.asc()",
+        lazy="selectin",
+    )
+    follow_ups: Mapped[list["FollowUp"]] = relationship(
+        "FollowUp",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="FollowUp.due_date.asc()",
         lazy="selectin",
     )
 
