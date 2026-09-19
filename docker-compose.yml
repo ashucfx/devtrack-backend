@@ -1,0 +1,148 @@
+services:
+  # ==============================================================================
+  # PostgreSQL Database Engine
+  # ==============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: devtrack_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-devtrack_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-devtrack_password}
+      POSTGRES_DB: ${POSTGRES_DB:-devtrack_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-devtrack_user} -d ${POSTGRES_DB:-devtrack_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devtrack_net
+
+  # ==============================================================================
+  # Redis In-Memory Cache & Task Broker
+  # ==============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: devtrack_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - devtrack_net
+
+  # ==============================================================================
+  # DevTrack FastAPI API Backend
+  # ==============================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: devtrack_api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - PROJECT_NAME=DevTrack Backend
+      - API_V1_STR=/api/v1
+      - SECRET_KEY=${SECRET_KEY:-devtrack-super-secret-production-encryption-key-32chars}
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-devtrack_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-devtrack_password}
+      - POSTGRES_DB=${POSTGRES_DB:-devtrack_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devtrack_net
+
+  # ==============================================================================
+  # Celery Background Worker
+  # ==============================================================================
+  celery_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: devtrack_celery_worker
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app.celery_app", "worker", "--loglevel=info", "-c", "4"]
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-devtrack_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-devtrack_password}
+      - POSTGRES_DB=${POSTGRES_DB:-devtrack_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devtrack_net
+
+  # ==============================================================================
+  # Celery Beat Periodic Task Scheduler
+  # ==============================================================================
+  celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: devtrack_celery_beat
+    restart: unless-stopped
+    command: ["celery", "-A", "app.workers.celery_app.celery_app", "beat", "--loglevel=info"]
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+      - POSTGRES_SERVER=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER:-devtrack_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-devtrack_password}
+      - POSTGRES_DB=${POSTGRES_DB:-devtrack_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - devtrack_net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  devtrack_net:
+    driver: bridge
