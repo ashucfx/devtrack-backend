@@ -20,6 +20,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.company import Company
+    from app.models.stage_history import ApplicationStageHistory
     from app.models.user import User
 
 
@@ -115,6 +116,13 @@ class Application(Base, UUIDMixin, TimestampMixin):
         "Company",
         back_populates="applications",
         lazy="joined",
+    )
+    stage_history: Mapped[list["ApplicationStageHistory"]] = relationship(
+        "ApplicationStageHistory",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="ApplicationStageHistory.changed_at.asc()",
+        lazy="selectin",
     )
 
     __table_args__ = (
