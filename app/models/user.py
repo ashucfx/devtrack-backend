@@ -8,6 +8,8 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 if TYPE_CHECKING:
     from app.models.application import Application
     from app.models.company import Company
+    from app.models.interview import Interview
+    from app.models.note import Note
     from app.models.token import RefreshToken
 
 
@@ -55,6 +57,18 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     applications: Mapped[list["Application"]] = relationship(
         "Application",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    interviews: Mapped[list["Interview"]] = relationship(
+        "Interview",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    notes: Mapped[list["Note"]] = relationship(
+        "Note",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",
