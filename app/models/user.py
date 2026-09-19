@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from app.models.follow_up import FollowUp
     from app.models.interview import Interview
     from app.models.note import Note
+    from app.models.notification import Notification
     from app.models.token import RefreshToken
 
 
@@ -76,6 +77,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     follow_ups: Mapped[list["FollowUp"]] = relationship(
         "FollowUp",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    notifications: Mapped[list["Notification"]] = relationship(
+        "Notification",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",

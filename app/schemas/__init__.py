@@ -16,6 +16,7 @@ from app.schemas.company import CompanyCreate, CompanyRead, CompanyUpdate
 from app.schemas.follow_up import FollowUpCreate, FollowUpRead, FollowUpUpdate
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewUpdate
 from app.schemas.note import NoteCreate, NoteRead
+from app.schemas.notification import NotificationCreate, NotificationRead
 from app.schemas.stage_history import (
     ApplicationTimelineResponse,
     StageHistoryRead,
@@ -48,6 +49,8 @@ __all__ = [
     "MessageResponse",
     "NoteCreate",
     "NoteRead",
+    "NotificationCreate",
+    "NotificationRead",
     "PaginatedResponse",
     "PasswordChangeRequest",
     "RefreshTokenRequest",
