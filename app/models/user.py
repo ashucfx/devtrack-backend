@@ -6,6 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.company import Company
     from app.models.token import RefreshToken
 
 
@@ -41,6 +42,12 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
         "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    companies: Mapped[list["Company"]] = relationship(
+        "Company",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",
