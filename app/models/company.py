@@ -9,6 +9,7 @@ from sqlalchemy.types import Uuid
 from app.models.base import Base, TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.application import Application
     from app.models.user import User
 
 
@@ -47,6 +48,12 @@ class Company(Base, UUIDMixin, TimestampMixin):
     user: Mapped["User"] = relationship(
         "User",
         back_populates="companies",
+    )
+    applications: Mapped[list["Application"]] = relationship(
+        "Application",
+        back_populates="company",
+        cascade="all, delete-orphan",
+        lazy="selectin",
     )
 
     __table_args__ = (
