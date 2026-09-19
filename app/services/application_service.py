@@ -62,6 +62,9 @@ class ApplicationService:
         )
 
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)
         return await self.get_application(application.id, user_id)
 
     async def get_application(self, application_id: uuid.UUID, user_id: uuid.UUID) -> Application:
@@ -163,6 +166,9 @@ class ApplicationService:
         if update_dict:
             await self.app_repo.update(application, **update_dict)
             await self.session.commit()
+            from app.services.analytics_service import AnalyticsService
+
+            await AnalyticsService.invalidate_dashboard_cache(user_id)
 
         return await self.get_application(application.id, user_id)
 
@@ -189,6 +195,9 @@ class ApplicationService:
             notes=notes,
         )
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)
 
         return await self.get_application(application.id, user_id)
 
@@ -210,3 +219,6 @@ class ApplicationService:
         application = await self.get_application(application_id, user_id)
         await self.app_repo.delete(application)
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)

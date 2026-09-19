@@ -5,10 +5,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.api.dependencies.database import get_db
+from app.core.redis import redis_manager
 from app.core.security import create_access_token, hash_password
 from app.main import app
 from app.models.base import Base
 from app.models.user import User
+from tests.mocks.fake_redis import FakeAsyncRedis
 
 # In-memory async SQLite engine for lightning-fast, isolated test execution
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -26,6 +28,16 @@ TestAsyncSessionLocal = async_sessionmaker(
     autocommit=False,
     autoflush=False,
 )
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def mock_redis() -> AsyncGenerator[FakeAsyncRedis, None]:
+    """Provide isolated FakeAsyncRedis instance for every test."""
+    fake = FakeAsyncRedis()
+    redis_manager.set_client(fake)  # type: ignore[arg-type]
+    yield fake
+    await fake.aclose()
+    redis_manager.set_client(None)
 
 
 @pytest_asyncio.fixture(scope="function")

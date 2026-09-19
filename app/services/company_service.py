@@ -33,6 +33,9 @@ class CompanyService:
         )
         company = await self.company_repo.create(company)
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)
         return company
 
     async def get_company(self, company_id: uuid.UUID, user_id: uuid.UUID) -> Company:
@@ -100,3 +103,6 @@ class CompanyService:
         company = await self.get_company(company_id, user_id)
         await self.company_repo.delete(company)
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)

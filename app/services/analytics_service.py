@@ -4,6 +4,7 @@ from collections import defaultdict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.constants import ApplicationStage
+from app.core.redis import redis_manager
 from app.repositories.analytics_repository import AnalyticsRepository
 from app.schemas.analytics import (
     BreakdownAnalyticsResponse,
@@ -26,9 +27,22 @@ class AnalyticsService:
         self.analytics_repo = AnalyticsRepository(session)
 
     async def get_dashboard_summary(self, user_id: uuid.UUID) -> DashboardSummaryResponse:
-        """Fetch high-level KPI dashboard metrics."""
+        """Fetch high-level KPI dashboard metrics with Redis cache-aside."""
+        cache_key = redis_manager.dashboard_cache_key(user_id)
+        cached = await redis_manager.get_json(cache_key)
+        if cached:
+            return DashboardSummaryResponse(**cached)
+
         kpis = await self.analytics_repo.get_dashboard_kpis(user_id)
-        return DashboardSummaryResponse(**kpis)
+        response = DashboardSummaryResponse(**kpis)
+        await redis_manager.set_json(cache_key, response.model_dump(), ttl_seconds=300)
+        return response
+
+    @staticmethod
+    async def invalidate_dashboard_cache(user_id: uuid.UUID) -> None:
+        """Invalidate cached dashboard KPIs for a tenant."""
+        cache_key = redis_manager.dashboard_cache_key(user_id)
+        await redis_manager.delete(cache_key)
 
     async def get_funnel_analytics(self, user_id: uuid.UUID) -> FunnelAnalyticsResponse:
         """Calculate funnel progression and stage-by-stage conversion drop-off."""
