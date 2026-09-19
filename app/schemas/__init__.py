@@ -2,6 +2,7 @@ from app.schemas.application import ApplicationCreate, ApplicationRead, Applicat
 from app.schemas.auth import LoginRequest, PasswordChangeRequest, RefreshTokenRequest, TokenResponse
 from app.schemas.common import ErrorDetail, ErrorResponse, MessageResponse, PaginatedResponse
 from app.schemas.company import CompanyCreate, CompanyRead, CompanyUpdate
+from app.schemas.follow_up import FollowUpCreate, FollowUpRead, FollowUpUpdate
 from app.schemas.interview import InterviewCreate, InterviewRead, InterviewUpdate
 from app.schemas.note import NoteCreate, NoteRead
 from app.schemas.stage_history import (
@@ -21,6 +22,9 @@ __all__ = [
     "CompanyUpdate",
     "ErrorDetail",
     "ErrorResponse",
+    "FollowUpCreate",
+    "FollowUpRead",
+    "FollowUpUpdate",
     "InterviewCreate",
     "InterviewRead",
     "InterviewUpdate",

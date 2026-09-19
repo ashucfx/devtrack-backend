@@ -1,6 +1,7 @@
 from app.models.application import Application
 from app.models.base import Base
 from app.models.company import Company
+from app.models.follow_up import FollowUp
 from app.models.interview import Interview
 from app.models.note import Note
 from app.models.stage_history import ApplicationStageHistory
@@ -12,6 +13,7 @@ __all__ = [
     "ApplicationStageHistory",
     "Base",
     "Company",
+    "FollowUp",
     "Interview",
     "Note",
     "RefreshToken",

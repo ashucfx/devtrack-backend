@@ -8,6 +8,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 if TYPE_CHECKING:
     from app.models.application import Application
     from app.models.company import Company
+    from app.models.follow_up import FollowUp
     from app.models.interview import Interview
     from app.models.note import Note
     from app.models.token import RefreshToken
@@ -69,6 +70,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     notes: Mapped[list["Note"]] = relationship(
         "Note",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+    follow_ups: Mapped[list["FollowUp"]] = relationship(
+        "FollowUp",
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin",
