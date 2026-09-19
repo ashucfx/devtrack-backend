@@ -2,12 +2,26 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.database import get_db
+from app.core.config import get_settings
+from app.core.rate_limiter import RateLimiter
 from app.schemas.auth import LoginRequest, RefreshTokenRequest, TokenResponse
 from app.schemas.common import ErrorResponse
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
 
+settings = get_settings()
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+login_rate_limiter = RateLimiter(
+    max_requests=settings.RATE_LIMIT_LOGIN_MAX_REQUESTS,
+    window_seconds=settings.RATE_LIMIT_LOGIN_WINDOW_SECONDS,
+    key_prefix="login",
+)
+register_rate_limiter = RateLimiter(
+    max_requests=settings.RATE_LIMIT_REGISTER_MAX_REQUESTS,
+    window_seconds=settings.RATE_LIMIT_REGISTER_WINDOW_SECONDS,
+    key_prefix="register",
+)
 
 
 @router.post(
@@ -15,9 +29,11 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
+    dependencies=[Depends(register_rate_limiter)],
     responses={
         409: {"model": ErrorResponse, "description": "Email already registered"},
         422: {"model": ErrorResponse, "description": "Validation error"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
     },
 )
 async def register(
@@ -35,9 +51,11 @@ async def register(
     response_model=TokenResponse,
     status_code=status.HTTP_200_OK,
     summary="Authenticate and obtain tokens",
+    dependencies=[Depends(login_rate_limiter)],
     responses={
         401: {"model": ErrorResponse, "description": "Invalid credentials"},
         422: {"model": ErrorResponse, "description": "Validation error"},
+        429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
     },
 )
 async def login(

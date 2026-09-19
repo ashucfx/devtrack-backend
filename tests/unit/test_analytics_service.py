@@ -77,8 +77,10 @@ async def test_dashboard_summary_kpis(db_session: AsyncSession, test_user: User)
     db_session.add(interview)
     await db_session.commit()
 
+    await AnalyticsService.invalidate_dashboard_cache(test_user.id)
     summary = await service.get_dashboard_summary(test_user.id)
     assert summary.total_applications == 3
+
     assert summary.active_applications == 2
     assert summary.total_companies == 1
     assert summary.interviews_scheduled == 1

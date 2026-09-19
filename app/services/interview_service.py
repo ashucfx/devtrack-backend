@@ -44,6 +44,9 @@ class InterviewService:
         )
         interview = await self.interview_repo.create(interview)
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)
         return interview
 
     async def get_interview(self, interview_id: uuid.UUID, user_id: uuid.UUID) -> Interview:
@@ -76,6 +79,9 @@ class InterviewService:
         if update_dict:
             interview = await self.interview_repo.update(interview, **update_dict)
             await self.session.commit()
+            from app.services.analytics_service import AnalyticsService
+
+            await AnalyticsService.invalidate_dashboard_cache(user_id)
 
         return interview
 
@@ -84,3 +90,6 @@ class InterviewService:
         interview = await self.get_interview(interview_id, user_id)
         await self.interview_repo.delete(interview)
         await self.session.commit()
+        from app.services.analytics_service import AnalyticsService
+
+        await AnalyticsService.invalidate_dashboard_cache(user_id)
