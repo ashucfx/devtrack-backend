@@ -1,0 +1,92 @@
+from enum import StrEnum
+
+
+class ApplicationStage(StrEnum):
+    SAVED = "SAVED"
+    APPLIED = "APPLIED"
+    SCREENING = "SCREENING"
+    ONLINE_ASSESSMENT = "ONLINE_ASSESSMENT"
+    INTERVIEW = "INTERVIEW"
+    OFFER = "OFFER"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"
+
+
+class ApplicationStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    ARCHIVED = "ARCHIVED"
+
+
+class EmploymentType(StrEnum):
+    FULL_TIME = "FULL_TIME"
+    PART_TIME = "PART_TIME"
+    CONTRACT = "CONTRACT"
+    INTERNSHIP = "INTERNSHIP"
+    OTHER = "OTHER"
+
+
+class LocationType(StrEnum):
+    REMOTE = "REMOTE"
+    HYBRID = "HYBRID"
+    ON_SITE = "ON_SITE"
+
+
+class Priority(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    URGENT = "URGENT"
+
+
+class ApplicationSource(StrEnum):
+    LINKEDIN = "LINKEDIN"
+    INDEED = "INDEED"
+    COMPANY_WEBSITE = "COMPANY_WEBSITE"
+    REFERRAL = "REFERRAL"
+    RECRUITER = "RECRUITER"
+    OTHER = "OTHER"
+
+
+class InterviewType(StrEnum):
+    HR = "HR"
+    TECHNICAL = "TECHNICAL"
+    CODING = "CODING"
+    SYSTEM_DESIGN = "SYSTEM_DESIGN"
+    MANAGERIAL = "MANAGERIAL"
+    FINAL = "FINAL"
+    OTHER = "OTHER"
+
+
+class InterviewStatus(StrEnum):
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+    RESCHEDULED = "RESCHEDULED"
+
+
+class FollowUpStatus(StrEnum):
+    PENDING = "PENDING"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class RelationshipType(StrEnum):
+    RECRUITER = "RECRUITER"
+    REFERRAL = "REFERRAL"
+    HIRING_MANAGER = "HIRING_MANAGER"
+    PEER = "PEER"
+    OTHER = "OTHER"
+
+
+class EntityType(StrEnum):
+    APPLICATION = "APPLICATION"
+    COMPANY = "COMPANY"
+    INTERVIEW = "INTERVIEW"
+    CONTACT = "CONTACT"
+
+
+class NotificationType(StrEnum):
+    FOLLOW_UP_DUE = "FOLLOW_UP_DUE"
+    INTERVIEW_REMINDER = "INTERVIEW_REMINDER"
+    APPLICATION_DEADLINE = "APPLICATION_DEADLINE"
+    STAGE_UPDATED = "STAGE_UPDATED"
